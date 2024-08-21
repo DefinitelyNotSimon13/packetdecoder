@@ -1,3 +1,4 @@
+import com.work.Packet
 import com.work.convertHexCharToBinary
 import com.work.readFileIntoCharArray
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -7,6 +8,29 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import java.io.File
 
 class MainKtTest {
+
+    @Test
+    fun sanity() {
+        assertDoesNotThrow {
+            loadTest("test.txt")
+            loadTest("test2.txt")
+            loadTest("test3.txt")
+            loadTest("test4.txt")
+        }
+    }
+
+    fun loadTest(filename: String) {
+        val hexContent = readFileIntoCharArray("task/$filename")
+        val binaryContent = com.work.convertContentToBinaryList(hexContent)
+        println(binaryContent)
+
+        val packet = Packet(binaryContent)
+
+        println("Loaded Packet!")
+        println(packet.getLength())
+
+        val allPackets = packet.getFlattenedPackets()
+    }
 
     @Test
     fun readFile() {

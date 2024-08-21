@@ -1,45 +1,36 @@
 package com.work
 
-import java.io.File
-import java.security.InvalidParameterException
-
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 fun main() {
-    val hexContent = readFileIntoCharArray("task/literalInput.txt")
+    val hexContent = readFileIntoCharArray("task/test2.txt")
     val binaryContent = convertContentToBinaryList(hexContent)
+    println(binaryContent)
 
     val packet = Packet(binaryContent)
-    packet.loadPacket()
-    println(packet.header)
-    if(packet.body is LiteralContent) {
-        println((packet.body as LiteralContent).literalValue)
+
+    println("Loaded Packet!")
+    println(packet.getLength())
+
+    val allPackets = packet.getFlattenedPackets()
+    println("Total of ${allPackets.size}")
+    for (child in allPackets) {
+        println("\tHeader: ${child.header}")
+        println("\tBody: ${child.body}")
+        if(child.body is LiteralContent) {
+            println("\t\tValue: ${(child.body as LiteralContent).literalValue}")
+        }
     }
+    println("The packages have a version sum of ${packet.getVersionSum()}")
+
+
+//    val allPackets = packet.getFlattenedPackets()
+//    println("Input: $binaryContent")
+//    println("All packets:")
+//    for (childPacket in allPackets) {
+//        println("\tHeader: ${childPacket.header}")
+//        println("\tBody: ${childPacket.body}")
+//        if (childPacket.body is LiteralContent) {
+//            println("\t\tLiteral: ${(childPacket.body as LiteralContent).literalValue}")
+//        }
+//    }
 }
 
-fun readFileIntoCharArray(filename: String): List<Char> = File(filename).readText().toList()
-
-fun convertHexCharToBinary(input: Char): List<Int> {
-    val hexValue = input.digitToIntOrNull(16) ?: throw InvalidParameterException("$input is invalid")
-    return hexValue.toString(2).padStart(4, '0').map { it.digitToInt() }
-}
-
-fun convertContentToBinaryList(input: List<Char>): List<Int> = input.map { convertHexCharToBinary(it) }.flatten()
-
-// Shift accumulator to left by 1 for each bit, then add current bit with bitwise or
-fun convertBinaryListToInt(input: List<Int>): Int = input.fold(0) { accumulator, bit -> (accumulator shl 1) or bit }
-
-fun createPacketHeader(input: List<Int>): PacketHeader {
-    val encodedVersion = input.subList(0, 3)
-    val encodedId = input.subList(3, 6)
-    return PacketHeader(
-        convertBinaryListToInt(encodedVersion),
-        convertBinaryListToInt(encodedId)
-    )
-}
-
-fun<T> List<T>.removeStart(toIndex: Int): Pair<List<T>, List<T>> {
-    val firstThree = this.subList(0, toIndex)
-    val rest = this.drop(toIndex)
-    return Pair(firstThree, rest)
-}
