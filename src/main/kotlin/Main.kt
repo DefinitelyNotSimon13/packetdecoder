@@ -13,7 +13,7 @@ fun main() {
 
     println("--------------- Assignment 2 ---------------")
     // It freaking overflows Int -.-
-    val reduced = packet.reduce()
+    val reduced = packet.calculate()
     println("Packet Reduced Value should be:\t 5390807940351")
     println("Actual Value:\t $reduced")
 

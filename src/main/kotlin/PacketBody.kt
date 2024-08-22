@@ -1,13 +1,29 @@
 package com.work
 
+// Only expose Interface to outside
+// children is exposed for calculation :/
 interface PacketBody {
     fun parseContent(bits: List<Byte>): List<Byte>
     fun getSize(): Int
+    fun getFlattenedChildren(): List<Packet> = emptyList()
+    fun calculateChildren(): Long
+}
+
+enum class PacketBodyType {
+    LITERAL_BODY, BY_LENGTH_BODY, BY_AMOUNT_BODY
+}
+
+// Not so nice with calc!!
+fun createClass(bodyType: PacketBodyType, operatorType: Byte? = null): PacketBody {
+    return when (bodyType) {
+        PacketBodyType.LITERAL_BODY -> LiteralBody()
+        PacketBodyType.BY_LENGTH_BODY -> ByLengthBody(operatorType!!)
+        PacketBodyType.BY_AMOUNT_BODY -> ByAmountBody(operatorType!!)
+    }
 }
 
 class LiteralBody : PacketBody {
-    var literalValue: Long? = null
-        private set
+    private var literalValue: Long? = null
     private var contentLength: Int = 0
 
     override fun parseContent(bits: List<Byte>): List<Byte> {
@@ -26,51 +42,69 @@ class LiteralBody : PacketBody {
     }
 
     override fun getSize(): Int = contentLength
+
+    override fun getFlattenedChildren(): List<Packet> = emptyList()
+
+    override fun calculateChildren(): Long = literalValue ?: error("Literal value not set")
 }
 
-abstract class ParentBody(private val calculator: CalculationStrategy) : PacketBody {
+abstract class ParentBody(operatorType: Byte) : PacketBody, CalculationStrategy by retrieveCalcStrategy(operatorType) {
     val children: MutableList<Packet> = mutableListOf()
 
+
     protected fun parseChildPackage(childBits: List<Byte>): List<Byte> {
-        val nextPacket = Packet(childBits)
-        children.add(nextPacket)
-        val returnBits = nextPacket.bits
-        return returnBits
+        return Packet(childBits).also { children.add(it) }.bits
     }
 
-    override fun getSize(): Int = children.fold(0) { sum, packet -> sum + packet.getSize() }
+    override fun getSize(): Int = children.sumOf(Packet::getSize)
 
-    fun getFlattenedChildren(): List<Packet> = children.flatMap { it.getFlattenedPackets() }
+    override fun getFlattenedChildren(): List<Packet> = children.flatMap(Packet::getFlattenedPackets)
 
-    fun calculate(): Long = calculator.calculate(this)
+    override fun calculateChildren(): Long = calculate(this)
 }
 
-class ByLengthBody(calc: CalculationStrategy) : ParentBody(calc) {
-    private val lengthSize = 15
-    private var length: Int = 0
 
+private class ByLengthBody(operatorType: Byte) : ParentBody(operatorType) {
     override fun parseContent(bits: List<Byte>): List<Byte> {
-        var (lengthBits, remainingBits) = bits.removeStart(lengthSize)
-        length = convertBinaryListToInt(lengthBits)
+        val lengthSize = 15
+        val (lengthBits, remainingBits) = bits.removeStart(lengthSize)
+        val length = convertBinaryListToInt(lengthBits)
         val targetLength = remainingBits.size - length
 
-        while (remainingBits.size > targetLength) {
-            remainingBits = parseChildPackage(remainingBits)
+        return parseChildren(remainingBits, targetLength)
+    }
+
+    private fun parseChildren(
+        remainingBits: List<Byte>,
+        targetLength: Int
+    ): List<Byte> {
+        var remainingBits1 = remainingBits
+        while (remainingBits1.size > targetLength) {
+            remainingBits1 = parseChildPackage(remainingBits1)
         }
-        return remainingBits
+        return remainingBits1
     }
 }
 
-class ByAmountBody(calc: CalculationStrategy) : ParentBody(calc) {
-    private val lengthSize = 11
-    private var amount = 0
-
+private class ByAmountBody(operatorType: Byte) : ParentBody(operatorType) {
     override fun parseContent(bits: List<Byte>): List<Byte> {
-        var (amountBits, remainingBits) = bits.removeStart(lengthSize)
-        amount = convertBinaryListToInt(amountBits)
+        val lengthSize = 11
+
+        val (amountBits, remainingBits) = bits.removeStart(lengthSize)
+        val amount = convertBinaryListToInt(amountBits)
+
+        return parseChildren(amount, remainingBits)
+
+    }
+
+    private fun parseChildren(
+        amount: Int,
+        remainingBits: List<Byte>
+    ): List<Byte> {
+        var remainingBits1 = remainingBits
         for (i in 1..amount) {
-            remainingBits = parseChildPackage(remainingBits)
+            remainingBits1 = parseChildPackage(remainingBits1)
         }
-        return remainingBits
+        return remainingBits1
     }
 }

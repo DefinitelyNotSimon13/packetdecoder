@@ -16,9 +16,9 @@ fun parsePacketHeader(bits: List<Byte>): Pair<PacketHeader, List<Byte>> {
 
 fun parsePacketBody(bits: List<Byte>, header: PacketHeader): Pair<PacketBody, List<Byte>> {
     val parsedBody: PacketBody = when (header.lengthType?.toInt()) {
-        null -> LiteralBody()
-        0 -> ByLengthBody(retrieveCalcStrategy(header.typeId))
-        1 -> ByAmountBody(retrieveCalcStrategy(header.typeId))
+        null -> createClass(PacketBodyType.LITERAL_BODY)
+        0 -> createClass(PacketBodyType.BY_LENGTH_BODY, header.typeId)
+        1 -> createClass(PacketBodyType.BY_AMOUNT_BODY, header.typeId)
         else -> throw IllegalArgumentException("Unknown lengthType: ${header.lengthType}")
     }
     val remainingBits = parsedBody.parseContent(bits)

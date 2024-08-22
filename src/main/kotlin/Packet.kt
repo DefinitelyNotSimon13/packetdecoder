@@ -22,14 +22,11 @@ class Packet(bits: List<Byte>) {
     }
 
     fun getFlattenedPackets(): List<Packet> =
-        listOf(this) + if (body is ParentBody) body.getFlattenedChildren() else emptyList()
+        listOf(this) + body.getFlattenedChildren()
 
     fun getVersionSum(): Int =
         getFlattenedPackets().sumOf { it.header.version.toInt() }
 
-    fun reduce(): Long = when (body) {
-        is LiteralBody -> body.literalValue!!
-        is ParentBody -> body.calculate()
-        else -> error("Unknown body type")
-    }
+    // recursively reduces until only literal values are left
+    fun calculate(): Long = body.calculateChildren()
 }

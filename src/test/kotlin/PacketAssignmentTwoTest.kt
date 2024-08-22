@@ -11,7 +11,7 @@ class PacketAssignmentTwoTest {
         val binaryData = convertContentToBinaryList(hexData)
         val packet = Packet(binaryData)
         val expected = 5390807940351
-        val actual = packet.reduce()
+        val actual = packet.calculate()
         assertEquals(expected, actual)
     }
 }

@@ -1,5 +1,7 @@
 package com.work
 
+import java.math.BigInteger
+
 fun interface CalculationStrategy {
     fun calculate(body: ParentBody): Long
 }
@@ -18,45 +20,41 @@ fun retrieveCalcStrategy(typeId: Byte): CalculationStrategy {
 }
 
 class AdditionStrategy : CalculationStrategy {
-    override fun calculate(body: ParentBody): Long {
-        val childValues = body.children.map(Packet::reduce)
-        return childValues.sum()
-    }
+    override fun calculate(body: ParentBody): Long =
+        body.children.map(Packet::calculate).sum()
 }
 
 class MultiplicationStrategy : CalculationStrategy {
     override fun calculate(body: ParentBody): Long {
-        val childValues = body.children.map(Packet::reduce)
-        return childValues.reduce { acc, i -> acc * i }
+        val childValues = body.children.map(Packet::calculate)
+        val product = childValues.map { BigInteger.valueOf(it) }
+            .reduce { acc, value -> acc.multiply(value) }
+        if (product > BigInteger.valueOf(Long.MAX_VALUE)) {
+            throw ArithmeticException("Multiplication overflow")
+        }
+        return product.toLong()
     }
 }
 
 class MinimumStrategy : CalculationStrategy {
-    override fun calculate(body: ParentBody): Long {
-        val childValues = body.children.map(Packet::reduce)
-        return childValues.min()
-    }
+    override fun calculate(body: ParentBody): Long = body.children.minOf(Packet::calculate)
 }
 
 class MaximumStrategy : CalculationStrategy {
-    override fun calculate(body: ParentBody): Long {
-        val childValues = body.children.map(Packet::reduce)
-        return childValues.max()
-    }
+    override fun calculate(body: ParentBody): Long = body.children.maxOf(Packet::calculate)
 }
 
 class GreaterThenStrategy : CalculationStrategy {
     override fun calculate(body: ParentBody): Long {
-        val children = body.children.map(Packet::reduce)
+        val children = body.children.map(Packet::calculate)
         require(children.size == 2) { "GreaterThenStrategy can only be used with 2 children" }
         return if (children[0] > children[1]) 1 else 0
-
     }
 }
 
 class LassThenStrategy : CalculationStrategy {
     override fun calculate(body: ParentBody): Long {
-        val children = body.children.map(Packet::reduce)
+        val children = body.children.map(Packet::calculate)
         require(children.size == 2) { "LassThenStrategy can only be used with 2 children" }
         return if (children[0] < children[1]) 1 else 0
     }
@@ -64,7 +62,7 @@ class LassThenStrategy : CalculationStrategy {
 
 class EqualsStrategy : CalculationStrategy {
     override fun calculate(body: ParentBody): Long {
-        val children = body.children.map(Packet::reduce)
+        val children = body.children.map(Packet::calculate)
         require(children.size == 2) { "EqualsStrategy can only be used with 2 children" }
         return if (children[0] == children[1]) 1 else 0
     }
