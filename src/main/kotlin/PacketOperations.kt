@@ -1,6 +1,6 @@
 package com.work
 
-interface CalculationStrategy {
+fun interface CalculationStrategy {
     fun calculate(body: ParentBody): Long
 }
 
